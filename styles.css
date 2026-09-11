@@ -47,20 +47,18 @@ code { font-family: var(--mono); font-size: 0.86em; background: var(--surface-2)
 
 .topbar {
   position: sticky; top: 0; z-index: 20;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  flex-wrap: wrap;
+  display: flex; align-items: center;
   padding: 12px 20px;
   background: rgba(10, 10, 11, 0.82);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
-/* Narrowest phones: shrink both halves rather than let the flex row push the
-   document wider than the viewport. */
+/* Narrowest phones: shrink the wordmark rather than let it push the document
+   wider than the viewport. */
 @media (max-width: 400px) {
-  .topbar { padding: 10px 14px; gap: 8px; }
+  .topbar { padding: 10px 14px; }
   .wordmark { font-size: 11px; letter-spacing: 0.1em; gap: 6px; }
   .wordmark .mark { font-size: 13px; }
-  .privacy-badge { font-size: 10px; padding: 3px 8px; }
 }
 .wordmark {
   display: inline-flex; align-items: center; gap: 9px;
@@ -68,28 +66,6 @@ code { font-family: var(--mono); font-size: 0.86em; background: var(--surface-2)
   color: var(--ink); text-decoration: none; font-weight: 700;
 }
 .wordmark .mark { color: var(--accent); font-size: 15px; }
-.privacy-badge {
-  display: inline-flex; align-items: center; gap: 7px;
-  font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em;
-  color: var(--ink-dim); border: 1px solid var(--line-2); border-radius: 999px;
-  padding: 4px 10px; white-space: nowrap;
-}
-.privacy-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 8px currentColor; }
-.privacy-badge.ok .dot { background: var(--good); }
-.privacy-badge.bad .dot { background: var(--accent); }
-/* Exactly one suffix is visible at any width. Doing this in CSS rather than by
-   measuring the viewport in JS keeps the badge from ever forcing the sticky
-   header — and therefore the whole document — wider than the screen. */
-.privacy-badge .suffix { display: none; }
-.privacy-badge .s-long { display: inline; }
-@media (max-width: 699px) {
-  .privacy-badge .s-long { display: none; }
-  .privacy-badge .s-mid { display: inline; }
-}
-@media (max-width: 399px) {
-  .privacy-badge .s-mid { display: none; }
-  .privacy-badge .s-short { display: inline; }
-}
 
 /* ---------- hero ---------- */
 

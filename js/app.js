@@ -34,8 +34,6 @@ const el = {
   downloadBtn: $("downloadBtn"),
   copyBtn: $("copyBtn"),
   shareStatus: $("shareStatus"),
-  privacyBadge: $("privacyBadge"),
-  privacyText: $("privacyText"),
   stamp: $("stamp"),
 };
 
@@ -49,51 +47,6 @@ let current = null;
   if (missing.length) {
     throw new Error(`index.html is missing elements required by app.js: ${missing.join(", ")}`);
   }
-}
-
-/* ---------------------------------------------------------------- privacy --
- * The claim on the page is "no network requests after load". Rather than
- * asserting it in prose, read it out of the browser's own resource timing
- * buffer and show the count. If someone adds a fetch later, the badge
- * turns red without anyone having to remember to update the copy. */
-
-let externalRequests = 0;
-
-function checkNetwork() {
-  externalRequests = performance.getEntriesByType("resource")
-    .map((e) => e.name)
-    .filter((name) => !name.startsWith(location.origin))
-    .length;
-  el.privacyBadge.classList.toggle("ok", externalRequests === 0);
-  el.privacyBadge.classList.toggle("bad", externalRequests > 0);
-  renderPrivacyText();
-}
-
-// The full sentence is ~360px of unbreakable text, which pushed the sticky
-// header to 550px on a 390px phone and gave the whole page a horizontal
-// scrollbar — on the surface most of this will actually be read on. Narrow
-// viewports get a shorter form and the title attribute keeps the full sentence.
-// Only the number is set here. Which suffix is visible is decided by CSS media
-// queries, because measuring the viewport in JS raced against layout at 320px
-// and picked the wrong tier.
-function renderPrivacyText() {
-  el.privacyText.textContent = externalRequests === 0 ? "0" : String(externalRequests);
-  const full = externalRequests === 0
-    ? "0 external requests · nothing leaves this page"
-    : `${externalRequests} external request${externalRequests === 1 ? "" : "s"} — see network tab`;
-  el.privacyBadge.title = `${full}. Counted at runtime from the browser's own resource timings.`;
-}
-
-function watchNetwork() {
-  checkNetwork();
-  if (typeof PerformanceObserver === "function") {
-    try {
-      new PerformanceObserver(checkNetwork).observe({ type: "resource", buffered: true });
-    } catch {
-      /* Resource timing is unsupported; the initial count still stands. */
-    }
-  }
-  window.matchMedia("(max-width: 700px)").addEventListener("change", renderPrivacyText);
 }
 
 /* ----------------------------------------------------------------- notice -- */
@@ -595,6 +548,5 @@ for (const type of ["dragover", "drop"]) {
 
 renderGallery(null);
 renderSaturation();
-watchNetwork();
 
 if (location.hash === "#evidence") el.input.focus({ preventScroll: true });

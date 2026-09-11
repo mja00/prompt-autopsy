@@ -32,16 +32,25 @@ deliberately not built — see [Design decisions](#design-decisions).
 
 ## How the privacy claim is enforced, not just asserted
 
-The page says nothing is uploaded. Three things make that checkable rather than marketing:
+The page says nothing is uploaded. Two things make that checkable rather than marketing:
 
-1. **The badge counts requests at runtime.** It reads
-   `performance.getEntriesByType("resource")` and reports how many external requests were made.
-   If someone adds a `fetch()` later, the badge turns red without anyone remembering to update
-   the copy.
-2. **`connect-src 'none'`** in the Content-Security-Policy makes any future network call from
-   the page fail loudly instead of quietly exfiltrating a paste.
-3. **Nothing is persisted.** No cookies, no `localStorage`, no analytics. The only copy of a
+1. **`connect-src 'none'`** in the Content-Security-Policy makes any network call from the page
+   fail loudly instead of quietly exfiltrating a paste.
+2. **Nothing is persisted.** No cookies, no `localStorage`, no analytics. The only copy of a
    conversation is the one in the user's clipboard.
+
+A third item used to sit here — a header badge counting external requests at runtime. It was
+removed: the visible clause ("nothing leaves this page") was static HTML while only the number was
+dynamic, so *any* non-zero count rendered the self-contradicting sentence "2 external requests ·
+nothing leaves this page". That is exactly what happened on a proxied custom domain where
+Cloudflare injects a beacon, and it would have happened on any host given one stray resource.
+Verifying the claim is now one line in devtools, which is the same measurement the badge made:
+
+```js
+performance.getEntriesByType("resource").filter(r => !r.name.startsWith(location.origin)).length
+```
+
+That should return `0` on the shipped base.
 
 ## Architecture
 
@@ -110,18 +119,23 @@ curl -sI https://prompt-autopsy.mart.fyi/og.png   # 200, image/png, 1200x630
 
 It is still **not** the shipped base, for a reason that has nothing to do with DNS:
 `mart.fyi` is a proxied zone with **Cloudflare Web Analytics enabled**, so the edge injects
-`static.cloudflareinsights.com/beacon.min.js` into served HTML. That is a third-party request the
-repo cannot see and no test can catch, and it inverts the site's headline claim — the runtime
-privacy badge reads **"2 external requests · nothing leaves this page"** on `mart.fyi` versus
-**"0"** on `pages.dev`.
+`static.cloudflareinsights.com/beacon.min.js` into served HTML. Two consequences:
+
+- The beacon is a third-party request the repo cannot see and no test can catch. `connect-src
+  'none'` still prevents anything being *transmitted*, so the privacy claim holds, but the
+  resource entry exists and the load is no longer clean.
+- `script-src 'self'` blocks it, so every page load logs a CSP violation and a failed request on
+  that host — against a README claim of zero console errors on the shipped base.
 
 Do **not** fix this by adding `static.cloudflareinsights.com` to `script-src`. That stops the CSP
-violation by letting the analytics actually run, which makes "no analytics / nothing leaves this
-page" false. Disable Web Analytics for the zone instead (Cloudflare dashboard → the `mart.fyi`
-zone → Web Analytics → turn off the beacon for this hostname), then flip the base:
+violation by letting the analytics actually run, which makes "no analytics" false. Disable Web
+Analytics for the zone instead (Cloudflare dashboard → the `mart.fyi` zone → Web Analytics → turn
+off the beacon for this hostname), then confirm the load is clean before flipping the base:
 
 ```bash
-node tools/build.mjs https://prompt-autopsy.mart.fyi   # only after the badge reads 0 there
+# expect 0 — same measurement the removed badge used
+# performance.getEntriesByType("resource").filter(r => !r.name.startsWith(location.origin)).length
+node tools/build.mjs https://prompt-autopsy.mart.fyi
 ```
 
 Two traps when repointing the base:
@@ -200,8 +214,8 @@ non-zero (see the custom-domain note above).
   asserting that demo clears `MIN_CONFIDENT` so it cannot render as "tentative", and a test
   asserting every axis has a published saturation point that a rate axis can actually reach.
 - Production smoke test in a real Chromium: zero console errors, zero failed requests under CSP,
-  `0 external requests` reported by the runtime badge, all three samples returning their intended
-  verdict, card rendering at 2400×1350.
+  zero external resource entries, all three samples returning their intended verdict, card
+  rendering at 2400×1350.
 - The run adding zero requests is the real proof of the privacy claim: analysing a paste performs
   no network I/O at all.
 - `og.png` verified live: HTTP 200, `image/png`, exactly 1200×630, matching its declared
