@@ -120,11 +120,10 @@ argument and quietly repoint the shipped tags at some other host. The build also
 crawler-facing file points somewhere other than the host being deployed to.
 
 > Wrangler 4.x delegates `pages` commands to Workers. The project was created with `--force` to
-> stay on classic Pages, deliberately: Workers Free is capped at ~100k requests/day, and this
-> page costs ~9 requests per view (document + 6 ES modules + CSS + icon), so that cap would bite
-> at roughly 11k pageviews — exactly the viral spike this design exists to survive. Pages static
-> assets have no such per-day request limit. **Do not pass `--force` again**, and do not migrate
-> to Workers.
+> stay on classic Pages, deliberately: Workers Free is capped at ~100k requests/day, and a cold
+> load of this page costs 11 requests (measured), so that cap would bite at roughly 9k
+> pageviews — precisely the viral spike this design exists to survive. Pages static assets have
+> no such per-day request limit. **Do not pass `--force` again**, and do not migrate to Workers.
 
 ## Design decisions
 
@@ -145,13 +144,27 @@ is high and there are at least six messages.
 
 ## Verification
 
-- `npm test` — 18/18 passing. Includes a profile-separation test asserting eight distinguishable
-  writing styles produce eight distinguishable verdicts (this is the test that catches scoring
-  regressions), and a test pinning each demo button's label to the verdict it actually produces.
-- Production smoke test in a real Chromium against the deployed site: zero console errors, zero
-  failed requests under CSP, `0 external requests` reported by the runtime badge, all three
-  samples returning their intended verdict, card rendering at 2400×1350.
+Measured against the live deployment in Chromium with the cache disabled:
+
+| Metric | Value |
+|---|---|
+| Requests on cold load | **11** |
+| Requests added by running an autopsy | **0** |
+| External (third-party) requests | **0** |
+| Total transfer | **39.7 KB** |
+| DOMContentLoaded | **147 ms** |
+| Horizontal overflow, 320px → 1440px | **0px** |
+
+- `npm test` — 20/20 passing. Includes a profile-separation test asserting eight distinguishable
+  writing styles produce eight distinguishable verdicts (the test that catches scoring
+  regressions), a test pinning each demo button's label to the verdict it produces, and a test
+  asserting every axis has a published saturation point that a rate axis can actually reach.
+- Production smoke test in a real Chromium: zero console errors, zero failed requests under CSP,
+  `0 external requests` reported by the runtime badge, all three samples returning their intended
+  verdict, card rendering at 2400×1350.
+- The run adding zero requests is the real proof of the privacy claim: analysing a paste performs
+  no network I/O at all.
 - `og.png` verified live: HTTP 200, `image/png`, exactly 1200×630, matching its declared
   `og:image:width` / `og:image:height`.
-- Edge cases exercised in the browser: empty input, unlabelled paste, and the
-  "everything I paste is mine" override.
+- Edge cases exercised in the browser: empty input (must hide any previous report), unlabelled
+  paste (must warn about the guess), and the "everything I paste is mine" override.
