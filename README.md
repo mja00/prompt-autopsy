@@ -10,10 +10,18 @@ cannot remember, and has never once deserved your apology.
 ## Why it can go viral without costing anything
 
 Every request is a static file fetch from Cloudflare's CDN. There is no function, no database,
-no third-party API, and no per-request compute anywhere in the stack. Cloudflare Pages serves
-static assets with **unlimited bandwidth and unlimited requests** on the free plan.
+no third-party API, and no per-request compute anywhere in the stack.
 
-Concretely, this means:
+This is verifiable, not assumed. Cloudflare's Pages limits page
+([developers.cloudflare.com/pages/platform/limits](https://developers.cloudflare.com/pages/platform/limits/),
+checked Sep 2026) lists Free-plan limits for builds (500/month), custom domains, file count, file
+size and header rules — and **no request or bandwidth limit for static assets**. The same page
+states that "requests to Pages functions count towards your quota for Workers plans", which is
+the trap: Functions and Workers Free are capped at ~100k requests/day, and a cold load here is 11
+requests, so that cap would bite at roughly 9k pageviews — the exact spike this design is meant to
+survive. Serving pure static assets sidesteps it entirely.
+
+Concretely:
 
 - A traffic spike of 10 million visits costs **$0**. There is no meter to run.
 - There is no backend to fall over, rate-limit, or fan out into a paid service.
