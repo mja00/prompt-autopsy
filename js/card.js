@@ -2,6 +2,8 @@
 // Colours mirror the CSS tokens in styles.css; canvas cannot read custom
 // properties, so they are repeated here on purpose.
 
+import { num } from "./text.js";
+
 const C = {
   bg: "#0a0a0b",
   surface: "#0c0c0f",
@@ -209,9 +211,9 @@ export function cardBlob(canvas) {
 // produced it denies. analyze() counts only the capped slice.
 export function headerCount(analysis) {
   const counted = analysis.truncated
-    ? `${analysis.messageCount.toLocaleString()} of ${(analysis.messageCount + analysis.droppedCount).toLocaleString()} messages`
-    : `${analysis.messageCount} messages`;
-  return `${counted} · ${analysis.tokens.toLocaleString()} tokens`;
+    ? `${num(analysis.messageCount)} of ${num(analysis.messageCount + analysis.droppedCount)} messages`
+    : `${num(analysis.messageCount)} messages`;
+  return `${counted} · ${num(analysis.tokens)} tokens`;
 }
 
 // The text half of the share: what people actually paste into the composer.

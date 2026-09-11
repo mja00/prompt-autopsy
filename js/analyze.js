@@ -2,7 +2,7 @@
 // Every number below is measured from the pasted text; nothing is randomised
 // and nothing is sent anywhere.
 
-import { ratePer100, median, similarityOfSets, wordSet, tokens, charCount, emojiCount, upperWordCount, scale, clamp } from "./text.js";
+import { ratePer100, median, similarityOfSets, wordSet, tokens, charCount, emojiCount, upperWordCount, scale, clamp, num } from "./text.js";
 import { rankArchetypes } from "./archetypes.js";
 
 const P = {
@@ -341,7 +341,7 @@ export function analyze(prompts) {
       label: "Backstory Dumping",
       value: axes.verbosity,
       stat: `${Math.round(medWords)} words median`,
-      evidence: `Median prompt ${Math.round(medWords)} words; longest ${longest} words. Roughly ${tokens(joined).toLocaleString()} tokens handed over.`,
+      evidence: `Median prompt ${Math.round(medWords)} words; longest ${longest} words. Roughly ${num(tokens(joined))} tokens handed over.`,
       joke:
         medWords > 180
           ? "Your median prompt is longer than most stand-up sets. The question is on line 34."

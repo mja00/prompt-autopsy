@@ -80,6 +80,14 @@ export function clamp(n, lo = 0, hi = 100) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+// Grouped integer for anything that reaches the user or the share card. The
+// locale is pinned because the UI is English-only: without it a machine set to
+// de_DE renders "1.500", which both reads as a different number to the audience
+// the card is aimed at and fails the tests that assert the exact string.
+export function num(n) {
+  return Number(n).toLocaleString("en-US");
+}
+
 // Piecewise-linear scale with documented saturation points. Deliberately not a
 // fake percentile: this is a threshold rubric, and it says so on the page.
 export function scale(value, fullAt) {

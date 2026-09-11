@@ -96,24 +96,42 @@ node tools/build.mjs https://prompt-autopsy.mart.fyi
 npx wrangler pages deploy dist --project-name=prompt-autopsy --branch=main
 ```
 
-**Custom domain status:** `prompt-autopsy.mart.fyi` is attached to the Pages project but does
-**not** resolve. Cloudflare does not auto-create DNS for an API-attached Pages domain, and the
-wrangler OAuth token in use has no `dns_records:edit` scope, so the record has to be created by
-hand. Add it in the mart.fyi zone:
+**Custom domain status: serves fine, but is NOT the canonical base yet.** The DNS record now
+exists (added by hand in the mart.fyi zone — Cloudflare does not auto-create DNS for an
+API-attached Pages domain) and the domain is fully live:
 
 | Type  | Name            | Content                     | Proxy  |
 |-------|-----------------|-----------------------------|--------|
 | CNAME | `prompt-autopsy`| `prompt-autopsy.pages.dev`  | on     |
 
-Then confirm before repointing anything:
-
 ```bash
-curl -sI https://prompt-autopsy.mart.fyi/og.png   # expect 200 + image/png
+curl -sI https://prompt-autopsy.mart.fyi/og.png   # 200, image/png, 1200x630
 ```
 
-Until that returns 200, keep the `pages.dev` base. A canonical/og URL pointing at a host that
-does not resolve makes X render every shared link as a bare text card, which is the whole
-distribution mechanism.
+It is still **not** the shipped base, for a reason that has nothing to do with DNS:
+`mart.fyi` is a proxied zone with **Cloudflare Web Analytics enabled**, so the edge injects
+`static.cloudflareinsights.com/beacon.min.js` into served HTML. That is a third-party request the
+repo cannot see and no test can catch, and it inverts the site's headline claim — the runtime
+privacy badge reads **"2 external requests · nothing leaves this page"** on `mart.fyi` versus
+**"0"** on `pages.dev`.
+
+Do **not** fix this by adding `static.cloudflareinsights.com` to `script-src`. That stops the CSP
+violation by letting the analytics actually run, which makes "no analytics / nothing leaves this
+page" false. Disable Web Analytics for the zone instead (Cloudflare dashboard → the `mart.fyi`
+zone → Web Analytics → turn off the beacon for this hostname), then flip the base:
+
+```bash
+node tools/build.mjs https://prompt-autopsy.mart.fyi   # only after the badge reads 0 there
+```
+
+Two traps when repointing the base:
+
+- `tools/build.mjs` rewrites `index.html`, `robots.txt` and `manifest.webmanifest`, but **not
+  `og.html`**, which hardcodes the host as the card's CTA. `og.png` is then copied byte-for-byte
+  into `dist/`, so a stale host bakes into the share card and passes the build silently. Edit
+  `og.html` and re-run `npm run og` when changing the base.
+- Verify `/og.png` specifically, not just `/`. A canonical/og URL on a dead host makes X render
+  every shared link as a bare text card, which is the whole distribution mechanism.
 
 ## Deploy
 
@@ -162,7 +180,10 @@ is high and there are at least six messages.
 
 ## Verification
 
-Measured against the live deployment in Chromium with the cache disabled:
+Measured against the live deployment at `https://prompt-autopsy.pages.dev` in Chromium with the
+cache disabled. These figures are for the **shipped base only** — on a proxied custom domain with
+Cloudflare Web Analytics enabled, the edge injects a beacon and the external-request row becomes
+non-zero (see the custom-domain note above).
 
 | Metric | Value |
 |---|---|

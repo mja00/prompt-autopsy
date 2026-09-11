@@ -3,6 +3,7 @@ import { analyze, SATURATION, MIN_CONFIDENT } from "./analyze.js";
 import { ARCHETYPES, AXES } from "./archetypes.js";
 import { SAMPLES } from "./samples.js";
 import { renderCard, cardBlob, shareText } from "./card.js";
+import { num } from "./text.js";
 
 const $ = (id) => document.getElementById(id);
 const el = {
@@ -145,7 +146,7 @@ function run() {
   current = analyze(prompts);
   if (current.truncated) {
     showNotice(
-      `That input held ${(current.messageCount + current.droppedCount).toLocaleString()} messages. The first ${current.messageCount.toLocaleString()} were analysed — the rest were skipped so the page stayed responsive.`,
+      `That input held ${num(current.messageCount + current.droppedCount)} messages. The first ${num(current.messageCount)} were analysed — the rest were skipped so the page stayed responsive.`,
       { sticky: true },
     );
   } else {
@@ -239,10 +240,10 @@ function renderVerdict(a) {
     // notice — a screenshot of the report should not imply the whole input was
     // read when most of it was skipped.
     {
-      k: a.truncated ? `messages read (of ${(a.messageCount + a.droppedCount).toLocaleString()})` : "messages read",
+      k: a.truncated ? `messages read (of ${num(a.messageCount + a.droppedCount)})` : "messages read",
       v: String(a.messageCount),
     },
-    { k: "tokens you spent", v: a.tokens.toLocaleString() },
+    { k: "tokens you spent", v: num(a.tokens) },
     { k: "median prompt", v: `${a.medianWords} words` },
     { k: "verdict confidence", v: a.sampleNote ? "low" : "normal", small: true },
   ];
