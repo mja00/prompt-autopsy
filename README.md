@@ -82,7 +82,7 @@ Bars are a threshold rubric with saturation points, not a fake percentile, and t
 ## Develop
 
 ```bash
-npm test        # 23 engine tests
+npm test        # engine suite (node:test)
 npm run serve   # build dist/ and serve on :8099
 npm run og      # re-render og.png from og.html (needs headless Chrome)
 npm run deploy  # build and deploy to Cloudflare Pages
@@ -173,7 +173,7 @@ Measured against the live deployment in Chromium with the cache disabled:
 | DOMContentLoaded | **195 ms** (170–270 ms across runs) |
 | Horizontal overflow, 320px → 1440px | **0px** |
 
-- `npm test` — 23/23 passing. Includes a profile-separation test asserting eight distinguishable
+- `npm test` — 25/25 passing. Includes a profile-separation test asserting eight distinguishable
   writing styles produce eight distinguishable verdicts (the test that catches scoring
   regressions), a test pinning each demo button's label to the verdict it produces *and*
   asserting that demo clears `MIN_CONFIDENT` so it cannot render as "tentative", and a test

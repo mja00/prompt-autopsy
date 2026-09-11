@@ -103,7 +103,7 @@ function drawHeader(ctx, analysis, site) {
   ctx.fillStyle = C.inkFaint;
   ctx.textAlign = "right";
   ctx.fillText(site.url, W - PAD, 56);
-  ctx.fillText(`${analysis.messageCount} messages · ${analysis.tokens.toLocaleString()} tokens`, W - PAD, 78);
+  ctx.fillText(headerCount(analysis), W - PAD, 78);
   ctx.textAlign = "left";
 
   ctx.strokeStyle = C.line;
@@ -202,6 +202,16 @@ export function cardBlob(canvas) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("canvas produced no image"))), "image/png");
   });
+}
+
+// Exported so the count line can be tested without a canvas: this is the
+// artifact people screenshot, and it must not claim a count the run that
+// produced it denies. analyze() counts only the capped slice.
+export function headerCount(analysis) {
+  const counted = analysis.truncated
+    ? `${analysis.messageCount.toLocaleString()} of ${(analysis.messageCount + analysis.droppedCount).toLocaleString()} messages`
+    : `${analysis.messageCount} messages`;
+  return `${counted} · ${analysis.tokens.toLocaleString()} tokens`;
 }
 
 // The text half of the share: what people actually paste into the composer.

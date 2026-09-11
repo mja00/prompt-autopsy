@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { parse, toPrompts, detectFormat } from "../js/parse.js";
 import { analyze, SATURATION, MIN_CONFIDENT, MAX_ANALYZED } from "../js/analyze.js";
 import { AXES } from "../js/archetypes.js";
+import { headerCount } from "../js/card.js";
 import { scale } from "../js/text.js";
 import { SAMPLES } from "../js/samples.js";
 
@@ -347,6 +348,16 @@ test("a capped input reports the analysed slice, not the raw input", () => {
   assert.equal(a.analyzedMessages.length, MAX_ANALYZED);
   // The oversized message sits past the cut, so it must not be quotable.
   assert.ok(!a.analyzedMessages.includes(many[MAX_ANALYZED + 400]));
+});
+
+test("the shared card discloses a capped input instead of claiming the raw count", () => {
+  // The card is what gets screenshotted and posted, so it must not assert a
+  // count that the run itself denies elsewhere on screen.
+  const capped = { messageCount: 1500, droppedCount: 2500, truncated: true, tokens: 1234567 };
+  assert.equal(headerCount(capped), "1,500 of 4,000 messages · 1,234,567 tokens");
+
+  const whole = { messageCount: 21, droppedCount: 0, truncated: false, tokens: 4321 };
+  assert.equal(headerCount(whole), "21 messages · 4,321 tokens");
 });
 
 test("every metric stays inside 0-100 and carries evidence", () => {
