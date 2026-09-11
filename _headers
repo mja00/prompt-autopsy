@@ -9,6 +9,25 @@
 # browser" claim: if anyone ever adds a fetch(), the page breaks loudly instead
 # of quietly exfiltrating a paste.
 
+# --- caching policy -------------------------------------------------------
+#
+# HTML and the JS/CSS it references are versioned independently by the browser,
+# so any long cache on them can serve a mismatched pair. That is not
+# theoretical: index.html was cached for 300s while /js/* was cached for 600s,
+# so there was a 300s window where a returning visitor got fresh HTML with a
+# stale app.js. app.js requires specific element ids and throws if any are
+# missing, so removing the badge's markup took the entire app down for anyone
+# in that window — cached JS demanding a DOM node the new HTML no longer had.
+#
+# Code is therefore revalidated on every use: max-age=0 + must-revalidate keeps
+# the HTML/JS/CSS triple atomic, at the cost of a conditional request (304) per
+# asset. og.png and favicon.svg stay immutable because they are inert binaries
+# with nothing to disagree about.
+#
+# If a longer cache is ever wanted here, the assets must be content-hashed
+# first so each HTML revision can only ever reference the files it was built
+# against.
+
 /og.png
   Cache-Control: public, max-age=31536000, immutable
 
@@ -16,10 +35,16 @@
   Cache-Control: public, max-age=31536000, immutable
 
 /js/*
-  Cache-Control: public, max-age=600, stale-while-revalidate=86400
+  Cache-Control: public, max-age=0, must-revalidate
 
 /styles.css
-  Cache-Control: public, max-age=600, stale-while-revalidate=86400
+  Cache-Control: public, max-age=0, must-revalidate
+
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
 
 /
-  Cache-Control: public, max-age=300, stale-while-revalidate=86400
+  Cache-Control: public, max-age=0, must-revalidate

@@ -166,6 +166,27 @@ crawler-facing file points somewhere other than the host being deployed to.
 > pageviews — precisely the viral spike this design exists to survive. Pages static assets have
 > no such per-day request limit. **Do not pass `--force` again**, and do not migrate to Workers.
 
+## Caching
+
+`_headers` serves HTML, JS and CSS with `max-age=0, must-revalidate`. **Do not raise those values
+without content-hashing the asset filenames first.**
+
+The page is three independently cached files — `index.html`, `js/*`, `styles.css` — and
+`js/app.js` requires the element ids that `index.html` provides: it throws during evaluation if
+any are missing, which leaves the page rendered but completely inert, with no visible error. Any
+cache policy that lets those files go stale on independent schedules reintroduces that mismatch.
+
+This has already caused an outage. HTML was cached for 300s while `/js/*` was cached for 600s, so
+for 300 seconds after a deploy a returning visitor received the **new** `index.html` (badge markup
+removed) alongside the **stale** `app.js` (still demanding `#privacyBadge`). The boot guard threw,
+and the app went dead for everyone in that window.
+
+`must-revalidate` costs one conditional request per asset and keeps the triple atomic. That trade
+is worth taking: a viral page that loads dead is worth less than one that loads a few
+milliseconds slower. `og.png` and `favicon.svg` stay `immutable` because they are inert binaries
+with no DOM contract to disagree about. If a longer cache is ever wanted, hash the filenames so
+each HTML revision can only reference the files it was built against.
+
 ## Design decisions
 
 **No leaderboard, no shared results, no accounts.** All three need a server and a database, and
@@ -216,6 +237,11 @@ non-zero (see the custom-domain note above).
 - Production smoke test in a real Chromium: zero console errors, zero failed requests under CSP,
   zero external resource entries, all three samples returning their intended verdict, card
   rendering at 2400×1350.
+- Cache-skew regression check, run with the browser cache **enabled** (testing with it disabled
+  hides this entire class of bug): warm the page, change `js/app.js`, redeploy, then reload. The
+  new bytes must be fetched rather than the cached ones. Both policies were measured — under the
+  old one the browser kept serving the previous file (`transfer=0`, old `decodedBodySize`), and
+  under `must-revalidate` it refetches on reload.
 - The run adding zero requests is the real proof of the privacy claim: analysing a paste performs
   no network I/O at all.
 - `og.png` verified live: HTTP 200, `image/png`, exactly 1200×630, matching its declared
