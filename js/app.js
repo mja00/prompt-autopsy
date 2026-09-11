@@ -1,6 +1,6 @@
 import { parse, toPrompts } from "./parse.js";
-import { analyze } from "./analyze.js";
-import { ARCHETYPES } from "./archetypes.js";
+import { analyze, SATURATION } from "./analyze.js";
+import { ARCHETYPES, AXES } from "./archetypes.js";
 import { SAMPLES } from "./samples.js";
 import { renderCard, cardBlob, shareText } from "./card.js";
 
@@ -55,17 +55,31 @@ let current = null;
  * buffer and show the count. If someone adds a fetch later, the badge
  * turns red without anyone having to remember to update the copy. */
 
+let externalRequests = 0;
+
 function checkNetwork() {
-  const entries = performance.getEntriesByType("resource")
+  externalRequests = performance.getEntriesByType("resource")
     .map((e) => e.name)
-    .filter((name) => !name.startsWith(location.origin));
-  if (!entries.length) {
-    el.privacyBadge.classList.add("ok");
-    el.privacyText.textContent = "0 external requests · nothing leaves this page";
-    return;
-  }
-  el.privacyBadge.classList.add("bad");
-  el.privacyText.textContent = `${entries.length} external request${entries.length === 1 ? "" : "s"} — see network tab`;
+    .filter((name) => !name.startsWith(location.origin))
+    .length;
+  el.privacyBadge.classList.toggle("ok", externalRequests === 0);
+  el.privacyBadge.classList.toggle("bad", externalRequests > 0);
+  renderPrivacyText();
+}
+
+// The full sentence is ~360px of unbreakable text, which pushed the sticky
+// header to 550px on a 390px phone and gave the whole page a horizontal
+// scrollbar — on the surface most of this will actually be read on. Narrow
+// viewports get a shorter form and the title attribute keeps the full sentence.
+// Only the number is set here. Which suffix is visible is decided by CSS media
+// queries, because measuring the viewport in JS raced against layout at 320px
+// and picked the wrong tier.
+function renderPrivacyText() {
+  el.privacyText.textContent = externalRequests === 0 ? "0" : String(externalRequests);
+  const full = externalRequests === 0
+    ? "0 external requests · nothing leaves this page"
+    : `${externalRequests} external request${externalRequests === 1 ? "" : "s"} — see network tab`;
+  el.privacyBadge.title = `${full}. Counted at runtime from the browser's own resource timings.`;
 }
 
 function watchNetwork() {
@@ -77,6 +91,7 @@ function watchNetwork() {
       /* Resource timing is unsupported; the initial count still stands. */
     }
   }
+  window.matchMedia("(max-width: 700px)").addEventListener("change", renderPrivacyText);
 }
 
 /* ------------------------------------------------------------------- run -- */
@@ -387,6 +402,45 @@ function renderGallery(winnerId) {
   }));
 }
 
+/* ----------------------------------------------------------- saturation -- */
+
+// Rendered from the same constant the scoring uses, so the published rubric
+// cannot drift away from the maths it describes.
+function renderSaturation() {
+  const table = $("saturation");
+  if (!table) return;
+
+  const head = document.createElement("tr");
+  for (const [text, cls] of [["Axis", "axis"], ["Reads 100 at", "num"], ["Measured as", "unit"]]) {
+    const th = document.createElement("th");
+    th.scope = "col";
+    th.className = cls;
+    th.textContent = text;
+    head.appendChild(th);
+  }
+  const thead = document.createElement("thead");
+  thead.appendChild(head);
+
+  const tbody = document.createElement("tbody");
+  for (const { id, label } of AXES) {
+    const { fullAt, unit, percent } = SATURATION[id];
+    const tr = document.createElement("tr");
+    const axis = document.createElement("td");
+    axis.className = "axis";
+    axis.textContent = label;
+    const num = document.createElement("td");
+    num.className = "num";
+    num.textContent = percent ? `${fullAt}%` : fullAt >= 10 ? String(fullAt) : fullAt.toFixed(1);
+    const u = document.createElement("td");
+    u.className = "unit";
+    u.textContent = unit;
+    tr.append(axis, num, u);
+    tbody.appendChild(tr);
+  }
+
+  table.replaceChildren(thead, tbody);
+}
+
 /* ------------------------------------------------------------------ boot -- */
 
 function escapeHtml(text) {
@@ -453,6 +507,7 @@ el.drop.addEventListener("drop", async (event) => {
 });
 
 renderGallery(null);
+renderSaturation();
 watchNetwork();
 
 if (location.hash === "#evidence") el.input.focus({ preventScroll: true });

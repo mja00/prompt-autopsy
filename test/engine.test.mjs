@@ -1,7 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parse, toPrompts, detectFormat } from "../js/parse.js";
-import { analyze } from "../js/analyze.js";
+import { analyze, SATURATION } from "../js/analyze.js";
+import { AXES } from "../js/archetypes.js";
+import { scale } from "../js/text.js";
 import { SAMPLES } from "../js/samples.js";
 
 const CHATGPT_PASTE = `You said:
@@ -264,6 +266,33 @@ test("every demo sample produces the verdict its label advertises", () => {
       `${key}: button says "${sample.label}" but the verdict is ${result.verdict.archetype.name}`,
     );
   }
+});
+
+test("every axis has a published saturation point and a matching archetype table entry", () => {
+  // index.html promises "the saturation point for every axis is listed in the
+  // method". This keeps that promise true as axes are added or renamed.
+  assert.deepEqual(
+    Object.keys(SATURATION).sort(),
+    AXES.map((a) => a.id).sort(),
+    "SATURATION and AXES disagree about which axes exist",
+  );
+  for (const [id, entry] of Object.entries(SATURATION)) {
+    assert.ok(entry.fullAt > 0, `${id} needs a positive saturation point`);
+    assert.ok(entry.unit && entry.unit.length > 5, `${id} needs a human-readable unit`);
+    assert.equal(typeof entry.percent, "boolean", `${id} must declare whether it is a rate`);
+    // A share of messages cannot exceed 100%, so a rate axis saturating above
+    // 100 is unreachable and would silently cap below full marks forever.
+    if (entry.percent) {
+      assert.ok(entry.fullAt <= 100, `${id} is a percentage but saturates at ${entry.fullAt}`);
+    }
+  }
+});
+
+test("an axis at exactly its saturation point reads 100", () => {
+  const { fullAt } = SATURATION.apology;
+  assert.equal(Math.round(scale(fullAt, fullAt)), 100);
+  assert.equal(Math.round(scale(fullAt * 2, fullAt)), 100, "percentages must clamp, not overflow");
+  assert.equal(Math.round(scale(0, fullAt)), 0);
 });
 
 test("every metric stays inside 0-100 and carries evidence", () => {

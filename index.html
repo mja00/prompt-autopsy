@@ -31,7 +31,7 @@
   </a>
   <div class="privacy-badge" id="privacyBadge" title="Counted at runtime from the browser's own resource timings.">
     <span class="dot"></span>
-    <span id="privacyText">checking network…</span>
+    <span id="privacyText">—</span><span class="suffix s-long"> external requests · nothing leaves this page</span><span class="suffix s-mid"> external requests</span><span class="suffix s-short"> ext</span>
   </div>
 </header>
 
@@ -155,6 +155,10 @@ Certainly! Here's a corrected version…"></textarea>
           site refuses to make. Results are not stored, not counted, and not seen by anyone —
           including whoever built it.
         </p>
+        <h4 id="saturationHead">Where each bar reaches 100</h4>
+        <table class="sat" id="saturation">
+          <caption class="sr-only">Saturation point for each of the nine axes</caption>
+        </table>
       </div>
       <div>
         <h4>What this is not</h4>

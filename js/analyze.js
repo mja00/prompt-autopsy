@@ -118,6 +118,27 @@ function shoutedWords(text) {
   return caps.filter((w) => !SHOUT_EXEMPT.has(w)).length;
 }
 
+// The value at which each axis reads a full 100. Published on the page, so a
+// reader can check the bars rather than take them on faith. It lives here (and
+// is imported by the UI) because it drifted once already during calibration —
+// hardcoding it in the HTML as well guarantees the two disagree eventually.
+//
+// `percent: true` matters: those axes are measured as a share of the user's
+// messages, so "80" means 80%, not "80 messages". Rendering it as a bare count
+// makes the published rubric false for exactly the large samples the page asks
+// people to paste.
+export const SATURATION = {
+  apology: { fullAt: 80, percent: true, unit: "of your messages contain an apology" },
+  politeness: { fullAt: 90, percent: true, unit: "of your messages contain a please or thank-you" },
+  hostility: { fullAt: 50, percent: true, unit: "of your messages accuse it of being wrong" },
+  churn: { fullAt: 60, percent: true, unit: "of your messages retry or near-repeat the previous one" },
+  control: { fullAt: 1.6, percent: false, unit: "constraints per message" },
+  verbosity: { fullAt: 170, percent: false, unit: "words in your median message" },
+  flattery: { fullAt: 40, percent: true, unit: "of your messages compliment it" },
+  chaos: { fullAt: 1.0, percent: false, unit: "chaos markers per message (caps, emoji, !!, slang)" },
+  urgency: { fullAt: 35, percent: true, unit: "of your messages carry an asap/hurry/deadline word" },
+};
+
 function fmtPct(n) {
   return `${Math.round(n)}%`;
 }
@@ -200,16 +221,18 @@ export function analyze(prompts) {
 
   const perMsg = (n) => pctOf(n, m);
 
+  const chaosScore = (perMsg(capsWords) * 1.5 + perMsg(bangs) * 0.5 + perMsg(emojis) * 1.2 + perMsg(loose) * 1.0) / 1.2;
+
   const axes = {
-    apology: scale(perMsg(apology.count), 80),
-    politeness: scale(perMsg(politeness.count), 90),
-    hostility: scale(perMsg(hostility.count), 50),
-    churn: scale(perMsg(reasks), 60),
-    control: scale(controlScore / Math.max(m, 1), 1.6),
-    verbosity: scale(medWords, 170),
-    flattery: scale(perMsg(flattery.count), 40),
-    chaos: scale((perMsg(capsWords) * 1.5 + perMsg(bangs) * 0.5 + perMsg(emojis) * 1.2 + perMsg(loose) * 1.0) / 1.2, 1.0),
-    urgency: scale(perMsg(urgency.count), 35),
+    apology: scale(perMsg(apology.count), SATURATION.apology.fullAt),
+    politeness: scale(perMsg(politeness.count), SATURATION.politeness.fullAt),
+    hostility: scale(perMsg(hostility.count), SATURATION.hostility.fullAt),
+    churn: scale(perMsg(reasks), SATURATION.churn.fullAt),
+    control: scale(controlScore / Math.max(m, 1), SATURATION.control.fullAt),
+    verbosity: scale(medWords, SATURATION.verbosity.fullAt),
+    flattery: scale(perMsg(flattery.count), SATURATION.flattery.fullAt),
+    chaos: scale(chaosScore, SATURATION.chaos.fullAt),
+    urgency: scale(perMsg(urgency.count), SATURATION.urgency.fullAt),
   };
 
   const metrics = [
