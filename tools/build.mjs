@@ -91,6 +91,35 @@ async function main() {
     if (existsSync(join(DIST, banned))) throw new Error(`dev-only path shipped: ${banned}`);
   }
 
+  // Cache-policy guard. The browser versions index.html and the JS/CSS it
+  // references independently, so a positive max-age on any of them can serve a
+  // mismatched pair: app.js requires the element ids index.html provides and
+  // throws when one is missing, which leaves the page rendering but completely
+  // inert, with no visible error. That already caused an outage (HTML cached
+  // 300s, /js/* cached 600s), so the policy is asserted rather than trusted.
+  const policy = new Map();
+  let section = null;
+  for (const raw of (await readFile(join(DIST, "_headers"), "utf8")).split("\n")) {
+    if (!raw.trim() || raw.trimStart().startsWith("#")) continue;
+    if (!/^\s/.test(raw)) {
+      section = raw.trim();
+      continue;
+    }
+    const cc = raw.trim().match(/^Cache-Control:\s*(.+)$/i);
+    if (cc && section) policy.set(section, cc[1].trim());
+  }
+  for (const path of ["/", "/index.html", "/js/*", "/styles.css"]) {
+    const value = policy.get(path);
+    if (!value) throw new Error(`_headers declares no Cache-Control for ${path}`);
+    const maxAge = value.match(/max-age=(\d+)/i);
+    if (maxAge && Number(maxAge[1]) > 0) {
+      throw new Error(
+        `_headers caches ${path} for ${maxAge[1]}s; HTML and its JS/CSS must revalidate together ` +
+          `or a mismatched pair can ship. Use max-age=0, must-revalidate (or hash the filenames).`,
+      );
+    }
+  }
+
   console.log(`built dist/ for ${BASE}`);
 }
 
