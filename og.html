@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>OG card source — rendered to og.png at 1200×630</title>
+<style>
+  /* Rendered headlessly to og.png. X crops summary_large_image to 1.91:1,
+     so this layout is authored at exactly 1200×630 with all content inside
+     a safe band — nothing important within 40px of any edge. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    background: #0a0a0b;
+    color: #f4f4f2;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    position: relative;
+    padding: 52px 56px;
+    display: flex; flex-direction: column;
+  }
+  .glow {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(900px 620px at -6% -14%, rgba(255,77,28,0.22), transparent 62%),
+      radial-gradient(700px 480px at 104% -6%, rgba(200,255,47,0.07), transparent 58%);
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,0.022) 0 1px, transparent 1px 44px);
+  }
+  .edge { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #ff4d1c; }
+  .inner { position: relative; display: flex; flex-direction: column; height: 100%; }
+
+  header { display: flex; justify-content: space-between; align-items: baseline; }
+  .brand { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; font-size: 17px; letter-spacing: 0.14em; }
+  .brand span { color: #ff4d1c; }
+  .meta { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; color: #6d6d77; text-align: right; line-height: 1.5; }
+
+  .verdict { margin-top: 34px; display: flex; align-items: flex-start; gap: 22px; }
+  .emoji { font-size: 62px; line-height: 0.9; }
+  .vtext h1 { font-size: 62px; line-height: 0.96; letter-spacing: -0.035em; font-weight: 800; max-width: 900px; }
+  .tagline { margin-top: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 21px; color: #c8ff2f; }
+
+  .finding { margin-top: 30px; font-size: 26px; color: #a4a4ad; max-width: 980px; line-height: 1.35; }
+  .finding b { color: #f4f4f2; font-weight: 700; }
+
+  footer { margin-top: auto; padding-top: 26px; border-top: 1px solid #34343d; display: flex; justify-content: space-between; align-items: flex-end; }
+  .stats { display: flex; gap: 44px; }
+  .stat .n { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 34px; font-weight: 700; color: #ff4d1c; }
+  .stat .l { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #6d6d77; margin-top: 4px; }
+  .cta { text-align: right; }
+  .cta .big { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 15px; color: #f4f4f2; }
+  .cta .sub { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #6d6d77; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="grid"></div>
+  <div class="edge"></div>
+  <div class="inner">
+    <header>
+      <div class="brand"><span>✚</span> PROMPT AUTOPSY</div>
+      <div class="meta">nothing is uploaded<br>there is no server</div>
+    </header>
+
+    <div class="verdict">
+      <div class="emoji">🫠</div>
+      <div class="vtext">
+        <h1>The Thrall</h1>
+        <div class="tagline">“It says jump, you say ‘thank you so much, you're the best’.”</div>
+      </div>
+    </div>
+
+    <p class="finding">
+      You said sorry to a chatbot <b>23 times</b>. It has no memory of any of them.
+      Paste your own AI chats and find out what you are.
+    </p>
+
+    <footer>
+      <div class="stats">
+        <div class="stat"><div class="n">23</div><div class="l">apologies</div></div>
+        <div class="stat"><div class="n">94</div><div class="l">grovel</div></div>
+        <div class="stat"><div class="n">100</div><div class="l">bot flattery</div></div>
+      </div>
+      <div class="cta">
+        <div class="big">prompt-autopsy.pages.dev</div>
+        <div class="sub">free · no signup · runs in your browser</div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompt Autopsy — what your AI chats say about you</title>
+<meta name="description" content="Paste your AI chats and get a clinical readout of how you treat a machine that cannot be hurt, cannot remember, and has never once deserved your apology. Runs entirely in your browser.">
+<link rel="canonical" href="https://prompt-autopsy.pages.dev/">
+<meta name="theme-color" content="#0a0a0b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Prompt Autopsy — what your AI chats say about you">
+<meta property="og:description" content="You said sorry to a chatbot 12 times. It has no memory of any of them. Paste your prompts, get your verdict.">
+<meta property="og:url" content="https://prompt-autopsy.pages.dev/">
+<meta property="og:image" content="https://prompt-autopsy.pages.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Prompt Autopsy — what your AI chats say about you">
+<meta name="twitter:description" content="You said sorry to a chatbot 12 times. It has no memory of any of them.">
+<meta name="twitter:image" content="https://prompt-autopsy.pages.dev/og.png">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="wordmark" href="#top">
+    <span class="mark" aria-hidden="true">✚</span>
+    <span>Prompt&nbsp;Autopsy</span>
+  </a>
+  <div class="privacy-badge" id="privacyBadge" title="Counted at runtime from the browser's own resource timings.">
+    <span class="dot"></span>
+    <span id="privacyText">checking network…</span>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <p class="kicker">Client-side forensics · no upload, no account, no advice</p>
+    <h1>What your AI chats<br>say about <em>you</em>.</h1>
+    <p class="lede">
+      Paste the prompts you have sent to ChatGPT, Claude, Gemini, or anything else that talks back.
+      Get a clinical readout of how you treat a machine that cannot be hurt, cannot remember,
+      and has never once deserved your apology.
+    </p>
+    <p class="lede small">
+      Everything below runs on your device. There is no server to upload your chats to, no analytics,
+      and no storage — the only copy of your conversation is the one in your clipboard.
+    </p>
+    <div class="hero-actions">
+      <a class="btn primary" href="#evidence">Start the autopsy</a>
+      <button class="btn ghost" id="loadSampleTop" type="button">See an example first</button>
+    </div>
+  </section>
+
+  <section class="panel" id="evidence">
+    <h2><span class="num">01</span> Evidence</h2>
+    <p class="hint">
+      Paste a conversation, or as many of your own messages as you can be bothered to select.
+      Speaker labels are detected automatically. A <code>conversations.json</code> from a ChatGPT
+      data export works too — drop it in, it is read locally with the File API.
+    </p>
+
+    <div class="drop" id="drop">
+      <textarea id="input" spellcheck="false" placeholder="Paste your chat here.
+
+You said:
+sorry to bother you, could you please fix this one more time
+
+ChatGPT said:
+Certainly! Here's a corrected version…"></textarea>
+      <div class="drop-overlay" id="dropOverlay" aria-hidden="true">Drop conversations.json to read it locally</div>
+    </div>
+
+    <div class="controls">
+      <button class="btn primary" id="runBtn" type="button">Run the autopsy</button>
+      <label class="toggle">
+        <input type="checkbox" id="assumeAll">
+        <span>Everything I paste is mine (no replies included)</span>
+      </label>
+      <span class="sample-row">
+        Try:
+        <button class="linkbtn" data-sample="apologetic" type="button">the apologiser</button>
+        <button class="linkbtn" data-sample="feral" type="button">the feral debugger</button>
+        <button class="linkbtn" data-sample="rambler" type="button">the 3am rambler</button>
+      </span>
+    </div>
+
+    <div class="detect" id="detect" hidden></div>
+  </section>
+
+  <section class="panel" id="report" hidden>
+    <h2><span class="num">02</span> Verdict</h2>
+    <div class="verdict-wrap">
+      <div class="verdict" id="verdictCard">
+        <div class="stamp" id="stamp">verified</div>
+        <div class="verdict-emoji" id="verdictEmoji">🙇</div>
+        <h3 id="verdictName">—</h3>
+        <p class="tagline" id="verdictTagline">—</p>
+        <p class="blurb" id="verdictBlurb">—</p>
+        <p class="rel" id="verdictRel">—</p>
+        <p class="runnerup small" id="verdictRunner"></p>
+      </div>
+      <aside class="headline" id="headline"></aside>
+    </div>
+  </section>
+
+  <section class="panel" id="findings" hidden>
+    <h2><span class="num">03</span> Findings</h2>
+    <p class="hint">
+      Nine axes, each measured from your words. The bars are a threshold rubric, not a percentile —
+      the saturation point for every axis is listed in the <a href="#method">method</a>.
+    </p>
+    <ol class="metrics" id="metrics"></ol>
+  </section>
+
+  <section class="panel" id="exhibits" hidden>
+    <h2><span class="num">04</span> Exhibit A</h2>
+    <div class="exhibits" id="exhibitList"></div>
+  </section>
+
+  <section class="panel" id="share" hidden>
+    <h2><span class="num">05</span> Share it</h2>
+    <p class="hint">
+      The card contains your verdict and your numbers — never your messages, because we never have them.
+    </p>
+    <div class="share-grid">
+      <canvas id="cardCanvas" width="1200" height="675" aria-label="Shareable verdict card"></canvas>
+      <div class="share-actions">
+        <button class="btn primary" id="shareBtn" type="button">Share</button>
+        <button class="btn" id="downloadBtn" type="button">Download PNG</button>
+        <button class="btn" id="copyBtn" type="button">Copy the post text</button>
+        <p class="hint tiny" id="shareStatus">1200 × 675 — sized for the timeline.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="method">
+    <h2><span class="num">06</span> Method, and the honest caveats</h2>
+    <div class="two-col">
+      <div>
+        <h4>How it works</h4>
+        <p>
+          Your paste is split into turns, the ones you wrote are isolated, and each axis counts
+          phrase events in your own words: apologies, courtesies, accusations, near-duplicate
+          re-asks (measured with token-set overlap), constraints, median length, compliments,
+          chaos markers, and urgency words. Verdicts are a weighted fit over those nine axes,
+          resolved by a fixed table in <code>js/archetypes.js</code>.
+        </p>
+        <h4>Why there is no leaderboard</h4>
+        <p>
+          A leaderboard would need a server, a database, and your messages. That is the trade this
+          site refuses to make. Results are not stored, not counted, and not seen by anyone —
+          including whoever built it.
+        </p>
+      </div>
+      <div>
+        <h4>What this is not</h4>
+        <p>
+          Not a psychological assessment, not a diagnostic tool, and not evidence of anything.
+          It is a phrase counter with opinions. Small samples produce confident nonsense — paste
+          at least twenty of your messages before you argue with the result.
+        </p>
+        <h4>Cost, stated plainly</h4>
+        <p>
+          Static files on a CDN. No functions, no database, no third-party APIs, no per-request
+          compute. If this page gets ten million visits, the bill is still zero dollars, which is
+          the only reason it can afford to be honest about your prompts.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="gallery">
+    <h2><span class="num">07</span> Every verdict</h2>
+    <p class="hint"><span id="galleryCount">Every</span> way this can end. Findings are contested in the replies.</p>
+    <div class="gallery" id="galleryGrid"></div>
+  </section>
+
+  <footer>
+    <p>
+      <strong>Prompt Autopsy</strong> — built in one sitting. No trackers, no cookies, no server.
+      Verify it yourself: open your network tab and re-run the autopsy, or switch off your
+      connection entirely and reload. It still works.
+    </p>
+  </footer>
+
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
