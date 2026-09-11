@@ -57,7 +57,8 @@ js/
   archetypes.js       15 archetypes + the scoring function
   analyze.js          the engine: nine measured axes, evidence, verdict
   card.js             canvas renderer for the shareable card
-  samples.js          three demo conversations
+  samples.js          three demo conversations (each deliberately past MIN_CONFIDENT turns,
+                      so the showcase verdicts render as verified rather than tentative)
   app.js              DOM wiring, share, drag-and-drop, gallery
 test/engine.test.mjs  engine tests: parsing, scoring separation, caps, thresholds
 tools/build.mjs       builds dist/, rewrites absolute URLs, guards against dev files shipping
@@ -168,13 +169,14 @@ Measured against the live deployment in Chromium with the cache disabled:
 | Requests on cold load | **11** |
 | Requests added by running an autopsy | **0** |
 | External (third-party) requests | **0** |
-| Total transfer | **39.7 KB** |
-| DOMContentLoaded | **147 ms** |
+| Total transfer | **42.8 KB** |
+| DOMContentLoaded | **195 ms** (170–270 ms across runs) |
 | Horizontal overflow, 320px → 1440px | **0px** |
 
-- `npm test` — 20/20 passing. Includes a profile-separation test asserting eight distinguishable
+- `npm test` — 23/23 passing. Includes a profile-separation test asserting eight distinguishable
   writing styles produce eight distinguishable verdicts (the test that catches scoring
-  regressions), a test pinning each demo button's label to the verdict it produces, and a test
+  regressions), a test pinning each demo button's label to the verdict it produces *and*
+  asserting that demo clears `MIN_CONFIDENT` so it cannot render as "tentative", and a test
   asserting every axis has a published saturation point that a rate axis can actually reach.
 - Production smoke test in a real Chromium: zero console errors, zero failed requests under CSP,
   `0 external requests` reported by the runtime badge, all three samples returning their intended

@@ -97,12 +97,12 @@ function watchNetwork() {
 
 /* ----------------------------------------------------------------- notice -- */
 
-// Transient inline feedback, reused by the drop path and by truncation
-// warnings. Deliberately not a toast/overlay: nothing here should cover the
+// Transient inline feedback for the drop path, plus the sticky truncation
+// notice. Deliberately not a toast overlay: nothing here should cover the
 // results the user just waited for.
 let noticeTimer = 0;
 
-function showNotice(message, isError = false) {
+function showNotice(message, { bad = false, sticky = false } = {}) {
   clearTimeout(noticeTimer);
   const box = $("notice");
   if (!message) {
@@ -110,9 +110,12 @@ function showNotice(message, isError = false) {
     return;
   }
   box.textContent = message;
-  box.classList.toggle("bad", isError);
+  box.classList.toggle("bad", bad);
   box.hidden = false;
-  if (!isError) noticeTimer = setTimeout(() => { box.hidden = true; }, 4000);
+  // Anything the reader must not miss stays put. A timer that removes the only
+  // trace of dropped messages would leave "messages read 1,500" standing over a
+  // report actually drawn from 4,000.
+  if (!sticky && !bad) noticeTimer = setTimeout(() => { box.hidden = true; }, 4000);
 }
 
 /* ------------------------------------------------------------------- run -- */
@@ -129,6 +132,10 @@ function run() {
     // "0 messages of yours" header, which reads as a result rather than a
     // failure to parse.
     for (const section of [el.report, el.findings, el.exhibits, el.share]) section.hidden = true;
+    // The truncation notice is sticky, so it has to be cleared here too —
+    // otherwise emptying the box leaves "held 4,000 messages" standing over an
+    // empty input.
+    showNotice(null);
     current = null;
     el.detect.hidden = false;
     el.detect.scrollIntoView({ block: "center" });
@@ -139,6 +146,7 @@ function run() {
   if (current.truncated) {
     showNotice(
       `That input held ${(current.messageCount + current.droppedCount).toLocaleString()} messages. The first ${current.messageCount.toLocaleString()} were analysed — the rest were skipped so the page stayed responsive.`,
+      { sticky: true },
     );
   } else {
     showNotice(null);
@@ -146,7 +154,7 @@ function run() {
   renderVerdict(current);
   renderGallery(current.verdict.archetype.id);
   renderMetrics(current);
-  renderExhibits(current, prompts);
+  renderExhibits(current);
   renderCard(el.canvas, current, site());
   resetShareStatus();
   [el.report, el.findings, el.exhibits, el.share].forEach((s) => (s.hidden = false));
@@ -227,7 +235,13 @@ function renderVerdict(a) {
   el.verdictRunner.textContent = bits.join(" · ");
 
   const cells = [
-    { k: "messages read", v: String(a.messageCount) },
+    // The cap is disclosed in the cell label, not only in the transient
+    // notice — a screenshot of the report should not imply the whole input was
+    // read when most of it was skipped.
+    {
+      k: a.truncated ? `messages read (of ${(a.messageCount + a.droppedCount).toLocaleString()})` : "messages read",
+      v: String(a.messageCount),
+    },
     { k: "tokens you spent", v: a.tokens.toLocaleString() },
     { k: "median prompt", v: `${a.medianWords} words` },
     { k: "verdict confidence", v: a.sampleNote ? "low" : "normal", small: true },
@@ -288,7 +302,11 @@ function renderMetrics(a) {
 
 /* -------------------------------------------------------------- exhibits -- */
 
-function renderExhibits(a, prompts) {
+function renderExhibits(a) {
+  // Quote only from the analysed slice. On a capped input the raw prompts run
+  // longer, and an exhibit drawn from a skipped message would contradict the
+  // "messages read" figure directly above it.
+  const prompts = a.analyzedMessages;
   const out = [];
 
   if (a.wildest) {
@@ -543,12 +561,12 @@ el.drop.addEventListener("drop", async (event) => {
   if (!file) return;
 
   if (file.size > MAX_FILE_BYTES) {
-    showNotice(`That file is ${Math.round(file.size / 1048576)} MB. The limit is 64 MB.`, true);
+    showNotice(`That file is ${Math.round(file.size / 1048576)} MB. The limit is 64 MB.`, { bad: true });
     return;
   }
   const looksJson = /\.json$/i.test(file.name) || file.type.includes("json");
   if (!looksJson) {
-    showNotice(`${file.name} is not a .json file. Paste your messages into the box instead.`, true);
+    showNotice(`${file.name} is not a .json file. Paste your messages into the box instead.`, { bad: true });
     return;
   }
 
@@ -556,7 +574,7 @@ el.drop.addEventListener("drop", async (event) => {
   try {
     el.input.value = await file.text();
   } catch (error) {
-    showNotice(`Could not read that file: ${error.message}`, true);
+    showNotice(`Could not read that file: ${error.message}`, { bad: true });
     return;
   }
   el.assumeAll.checked = false;

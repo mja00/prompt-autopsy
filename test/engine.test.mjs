@@ -265,6 +265,15 @@ test("every demo sample produces the verdict its label advertises", () => {
       sample.expects,
       `${key}: button says "${sample.label}" but the verdict is ${result.verdict.archetype.name}`,
     );
+    // A demo that renders as provisional undercuts the product's own claim that
+    // small samples are flagged, so the showcase conversations must clear the
+    // gate. This was silently false for every demo when the gate was the
+    // hardcoded 5 while the page promised twenty.
+    assert.equal(
+      result.verdict.smallSample,
+      false,
+      `${key}: demo has ${result.messageCount} messages, below the ${MIN_CONFIDENT} gate, so it renders as "tentative"`,
+    );
   }
 });
 
@@ -323,6 +332,21 @@ test("the tentative-verdict threshold matches the number the page quotes", () =>
   assert.equal(analyze(make(MIN_CONFIDENT)).verdict.smallSample, false);
   assert.ok(analyze(make(MIN_CONFIDENT - 1)).sampleNote.includes(String(MIN_CONFIDENT)));
   assert.equal(analyze(make(MIN_CONFIDENT)).sampleNote, null);
+});
+
+test("a capped input reports the analysed slice, not the raw input", () => {
+  // The exhibits quote individual messages. If they draw from the raw input
+  // while the headline says fewer were read, the page quotes a message it just
+  // said it skipped.
+  const many = Array.from({ length: MAX_ANALYZED + 500 }, (_, i) =>
+    i === MAX_ANALYZED + 400
+      ? "x".repeat(4000)
+      : `message number ${i} with some words in it`);
+  const a = analyze(many);
+  assert.equal(a.messageCount, MAX_ANALYZED);
+  assert.equal(a.analyzedMessages.length, MAX_ANALYZED);
+  // The oversized message sits past the cut, so it must not be quotable.
+  assert.ok(!a.analyzedMessages.includes(many[MAX_ANALYZED + 400]));
 });
 
 test("every metric stays inside 0-100 and carries evidence", () => {

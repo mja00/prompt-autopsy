@@ -132,7 +132,6 @@ export const SATURATION = {
   politeness: { fullAt: 90, percent: true, unit: "of your messages contain a please or thank-you" },
   hostility: { fullAt: 50, percent: true, unit: "of your messages accuse it of being wrong" },
   churn: { fullAt: 60, percent: true, unit: "of your messages retry or near-repeat the previous one" },
-  control: { fullAt: 1.6, percent: false, unit: "constraints per message" },
   verbosity: { fullAt: 170, percent: false, unit: "words in your median message" },
   flattery: { fullAt: 40, percent: true, unit: "of your messages compliment it" },
   // Both composite axes are weighted and the unit text says so: a reader
@@ -423,6 +422,10 @@ export function analyze(prompts) {
     relationship,
     wildest: wild,
     topRepeat,
+    // The slice actually analysed. Callers that need to quote individual
+    // messages (the exhibits) MUST use this rather than the original array, or
+    // they will quote a message the UI just said was skipped.
+    analyzedMessages: list,
     sampleNote:
       m < MIN_CONFIDENT
         ? `Only ${plural(m, "message")} analysed. The verdict is provisional until you paste about ${MIN_CONFIDENT}.`
