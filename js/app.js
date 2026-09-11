@@ -1,5 +1,5 @@
 import { parse, toPrompts } from "./parse.js";
-import { analyze, SATURATION } from "./analyze.js";
+import { analyze, SATURATION, MIN_CONFIDENT } from "./analyze.js";
 import { ARCHETYPES, AXES } from "./archetypes.js";
 import { SAMPLES } from "./samples.js";
 import { renderCard, cardBlob, shareText } from "./card.js";
@@ -13,6 +13,7 @@ const el = {
   loadSampleTop: $("loadSampleTop"),
   assumeAll: $("assumeAll"),
   detect: $("detect"),
+  notice: $("notice"),
   report: $("report"),
   findings: $("findings"),
   exhibits: $("exhibits"),
@@ -94,6 +95,26 @@ function watchNetwork() {
   window.matchMedia("(max-width: 700px)").addEventListener("change", renderPrivacyText);
 }
 
+/* ----------------------------------------------------------------- notice -- */
+
+// Transient inline feedback, reused by the drop path and by truncation
+// warnings. Deliberately not a toast/overlay: nothing here should cover the
+// results the user just waited for.
+let noticeTimer = 0;
+
+function showNotice(message, isError = false) {
+  clearTimeout(noticeTimer);
+  const box = $("notice");
+  if (!message) {
+    box.hidden = true;
+    return;
+  }
+  box.textContent = message;
+  box.classList.toggle("bad", isError);
+  box.hidden = false;
+  if (!isError) noticeTimer = setTimeout(() => { box.hidden = true; }, 4000);
+}
+
 /* ------------------------------------------------------------------- run -- */
 
 function run() {
@@ -115,6 +136,13 @@ function run() {
   }
 
   current = analyze(prompts);
+  if (current.truncated) {
+    showNotice(
+      `That input held ${(current.messageCount + current.droppedCount).toLocaleString()} messages. The first ${current.messageCount.toLocaleString()} were analysed — the rest were skipped so the page stayed responsive.`,
+    );
+  } else {
+    showNotice(null);
+  }
   renderVerdict(current);
   renderGallery(current.verdict.archetype.id);
   renderMetrics(current);
@@ -407,6 +435,11 @@ function renderGallery(winnerId) {
 // Rendered from the same constant the scoring uses, so the published rubric
 // cannot drift away from the maths it describes.
 function renderSaturation() {
+  // The method copy quotes the same constant the verdict gate uses, so
+  // "paste at least N" and the tentative-stamp threshold cannot disagree.
+  const minEl = $("minConfident");
+  if (minEl) minEl.textContent = String(MIN_CONFIDENT);
+
   const table = $("saturation");
   if (!table) return;
 
@@ -489,22 +522,57 @@ el.input.addEventListener("keydown", (event) => {
 
 // Drop a conversations.json straight in. Read with the File API — the file is
 // never sent anywhere, because there is nowhere to send it.
+const MAX_FILE_BYTES = 64 * 1024 * 1024;
+
 for (const type of ["dragenter", "dragover"]) {
   el.drop.addEventListener(type, (event) => {
     event.preventDefault();
     el.drop.classList.add("over");
   });
 }
-for (const type of ["dragleave", "drop"]) {
-  el.drop.addEventListener(type, () => el.drop.classList.remove("over"));
-}
+el.drop.addEventListener("dragleave", () => el.drop.classList.remove("over"));
+
 el.drop.addEventListener("drop", async (event) => {
+  // MUST be prevented. Without it the browser's default drop action navigates
+  // the tab to the dropped file, replacing the app — the exact opposite of what
+  // the overlay promises.
+  event.preventDefault();
+  el.drop.classList.remove("over");
+
   const file = event.dataTransfer?.files?.[0];
   if (!file) return;
-  el.input.value = await file.text();
+
+  if (file.size > MAX_FILE_BYTES) {
+    showNotice(`That file is ${Math.round(file.size / 1048576)} MB. The limit is 64 MB.`, true);
+    return;
+  }
+  const looksJson = /\.json$/i.test(file.name) || file.type.includes("json");
+  if (!looksJson) {
+    showNotice(`${file.name} is not a .json file. Paste your messages into the box instead.`, true);
+    return;
+  }
+
+  showNotice(`Reading ${file.name} locally…`);
+  try {
+    el.input.value = await file.text();
+  } catch (error) {
+    showNotice(`Could not read that file: ${error.message}`, true);
+    return;
+  }
   el.assumeAll.checked = false;
+  showNotice(null);
   run();
 });
+
+// Element-scoped protection only covers the drop zone, so releasing a file a
+// few pixels off it would still navigate the tab away and discard whatever was
+// pasted. Killing the default for the whole document means a near-miss is
+// harmless. The panel handler above still does the actual reading.
+for (const type of ["dragover", "drop"]) {
+  document.addEventListener(type, (event) => {
+    if (!el.drop.contains(event.target)) event.preventDefault();
+  });
+}
 
 renderGallery(null);
 renderSaturation();

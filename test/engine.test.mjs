@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parse, toPrompts, detectFormat } from "../js/parse.js";
-import { analyze, SATURATION } from "../js/analyze.js";
+import { analyze, SATURATION, MIN_CONFIDENT, MAX_ANALYZED } from "../js/analyze.js";
 import { AXES } from "../js/archetypes.js";
 import { scale } from "../js/text.js";
 import { SAMPLES } from "../js/samples.js";
@@ -293,6 +293,36 @@ test("an axis at exactly its saturation point reads 100", () => {
   assert.equal(Math.round(scale(fullAt, fullAt)), 100);
   assert.equal(Math.round(scale(fullAt * 2, fullAt)), 100, "percentages must clamp, not overflow");
   assert.equal(Math.round(scale(0, fullAt)), 0);
+});
+
+test("a large export is capped and stays fast instead of hanging the tab", () => {
+  // A real ChatGPT export runs to thousands of turns. The previous all-pairs
+  // similarity scan re-tokenised on every comparison, which meant minutes of
+  // blocked main thread on the feature the page calls instant.
+  const many = Array.from({ length: 6000 }, (_, i) =>
+    i % 7 === 0 ? "fix the failing test in auth.spec.ts please" : `what does this error mean in build log ${i}`);
+  const started = process.hrtime.bigint();
+  const a = analyze(many);
+  const ms = Number(process.hrtime.bigint() - started) / 1e6;
+
+  assert.equal(a.truncated, true);
+  assert.equal(a.messageCount, MAX_ANALYZED);
+  assert.equal(a.droppedCount, 6000 - MAX_ANALYZED);
+  assert.ok(ms < 2000, `analysis of 6000 messages took ${Math.round(ms)}ms`);
+});
+
+test("input under the cap is not reported as truncated", () => {
+  const a = analyze(["hello there", "can you help me with this"]);
+  assert.equal(a.truncated, false);
+  assert.equal(a.droppedCount, 0);
+});
+
+test("the tentative-verdict threshold matches the number the page quotes", () => {
+  const make = (n) => Array.from({ length: n }, (_, i) => `please help with bug ${i}, sorry`);
+  assert.equal(analyze(make(MIN_CONFIDENT - 1)).verdict.smallSample, true);
+  assert.equal(analyze(make(MIN_CONFIDENT)).verdict.smallSample, false);
+  assert.ok(analyze(make(MIN_CONFIDENT - 1)).sampleNote.includes(String(MIN_CONFIDENT)));
+  assert.equal(analyze(make(MIN_CONFIDENT)).sampleNote, null);
 });
 
 test("every metric stays inside 0-100 and carries evidence", () => {

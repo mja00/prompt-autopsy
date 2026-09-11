@@ -89,6 +89,7 @@ Certainly! Here's a corrected version…"></textarea>
     </div>
 
     <div class="detect" id="detect" hidden></div>
+    <p class="notice" id="notice" hidden></p>
   </section>
 
   <section class="panel" id="report" hidden>
@@ -118,6 +119,11 @@ Certainly! Here's a corrected version…"></textarea>
 
   <section class="panel" id="exhibits" hidden>
     <h2><span class="num">04</span> Exhibit A</h2>
+    <p class="hint warn-hint">
+      These are your actual words. Unlike the card in the next section — which contains only the
+      verdict and the numbers — this panel contains your messages. Do not screenshot it unless you
+      are happy for strangers to read them.
+    </p>
     <div class="exhibits" id="exhibitList"></div>
   </section>
 
@@ -165,7 +171,7 @@ Certainly! Here's a corrected version…"></textarea>
         <p>
           Not a psychological assessment, not a diagnostic tool, and not evidence of anything.
           It is a phrase counter with opinions. Small samples produce confident nonsense — paste
-          at least twenty of your messages before you argue with the result.
+          at least <span id="minConfident">20</span> of your messages before you argue with the result.
         </p>
         <h4>Cost, stated plainly</h4>
         <p>

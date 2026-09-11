@@ -59,8 +59,17 @@ export function upperWordCount(text) {
 // Jaccard overlap of token sets. Used to spot re-asking the same question,
 // which is the single most reliable "retry spiral" signal.
 export function similarity(a, b) {
-  const A = new Set(words(a));
-  const B = new Set(words(b));
+  return similarityOfSets(wordSet(a), wordSet(b));
+}
+
+// Pre-tokenised variant. Building a Set is the expensive part, so callers that
+// compare one prompt against many must build each set once rather than letting
+// this re-tokenise both sides on every pair.
+export function wordSet(text) {
+  return new Set(words(text));
+}
+
+export function similarityOfSets(A, B) {
   if (!A.size || !B.size) return 0;
   let inter = 0;
   for (const w of A) if (B.has(w)) inter += 1;

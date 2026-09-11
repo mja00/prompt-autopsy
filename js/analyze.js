@@ -2,7 +2,7 @@
 // Every number below is measured from the pasted text; nothing is randomised
 // and nothing is sent anywhere.
 
-import { ratePer100, median, similarity, tokens, charCount, emojiCount, upperWordCount, scale, clamp } from "./text.js";
+import { ratePer100, median, similarityOfSets, wordSet, tokens, charCount, emojiCount, upperWordCount, scale, clamp } from "./text.js";
 import { rankArchetypes } from "./archetypes.js";
 
 const P = {
@@ -135,9 +135,28 @@ export const SATURATION = {
   control: { fullAt: 1.6, percent: false, unit: "constraints per message" },
   verbosity: { fullAt: 170, percent: false, unit: "words in your median message" },
   flattery: { fullAt: 40, percent: true, unit: "of your messages compliment it" },
-  chaos: { fullAt: 1.0, percent: false, unit: "chaos markers per message (caps, emoji, !!, slang)" },
+  // Both composite axes are weighted and the unit text says so: a reader
+  // counting plain markers would otherwise land on ~83 and think the bar lied.
+  // Chaos = (caps 1.5x + bang pileups 0.5x + emoji 1.2x + slang 1x) / 1.2.
+  // Control = hard constraints 1x + soft nudges ("just", "make it") 0.34x.
+  control: { fullAt: 1.6, percent: false, unit: "weighted constraints per message (hard 1×, soft nudges 0.34×)" },
+  chaos: { fullAt: 1.0, percent: false, unit: "weighted chaos markers per message (caps 1.5×, emoji 1.2×, slang 1×, bang pileups 0.5×)" },
   urgency: { fullAt: 35, percent: true, unit: "of your messages carry an asap/hurry/deadline word" },
 };
+
+// Shared thresholds, exported so the copy on the page and the behaviour in the
+// code cannot drift apart (the saturation table already drifted once).
+export const REASK_THRESHOLD = 0.55;
+export const REPEAT_LOOKAHEAD = 40;
+
+// Below this many messages a verdict is stamped "tentative", and the method
+// section quotes the same number.
+export const MIN_CONFIDENT = 20;
+
+// Above this, analysis stops being instant on a phone. A single ChatGPT export
+// can carry thousands of turns, so the cap is enforced rather than assumed, and
+// the UI reports when it truncates.
+export const MAX_ANALYZED = 1500;
 
 function fmtPct(n) {
   return `${Math.round(n)}%`;
@@ -153,14 +172,20 @@ function pctOf(part, whole) {
   return whole ? (part / whole) * 100 : 0;
 }
 
-function findTopRepeat(prompts) {
+// The "asked N times" highlight. A retry spiral is local by definition, so the
+// scan is bounded rather than all-pairs: comparing every message against every
+// other one is O(n^2) set intersections, and on a real 5k-message ChatGPT
+// export that is ~12.5M comparisons — a frozen tab on the feature the page
+// advertises as instant.
+function findTopRepeat(entries) {
   let best = null;
-  for (let i = 0; i < prompts.length; i += 1) {
+  for (let i = 0; i < entries.length; i += 1) {
     let run = 1;
-    for (let j = i + 1; j < prompts.length; j += 1) {
-      if (similarity(prompts[i], prompts[j]) >= 0.55) run += 1;
+    const end = Math.min(entries.length, i + 1 + REPEAT_LOOKAHEAD);
+    for (let j = i + 1; j < end; j += 1) {
+      if (similarityOfSets(entries[i].set, entries[j].set) >= REASK_THRESHOLD) run += 1;
     }
-    if (!best || run > best.run) best = { run, text: prompts[i] };
+    if (!best || run > best.run) best = { run, text: entries[i].text };
   }
   return best && best.run >= 3 ? best : null;
 }
@@ -186,13 +211,22 @@ function preview(text, max = 58) {
 }
 
 export function analyze(prompts) {
-  const list = (prompts || []).map((p) => String(p).trim()).filter((p) => p.length > 0);
+  const all = (prompts || []).map((p) => String(p).trim()).filter((p) => p.length > 0);
+  // A ChatGPT export can carry thousands of turns. Analysis is meant to feel
+  // instant, so the tail is dropped and reported rather than silently making
+  // the page hang.
+  const truncated = all.length > MAX_ANALYZED;
+  const list = truncated ? all.slice(0, MAX_ANALYZED) : all;
   const m = list.length;
   const joined = list.join("\n");
   const totalChars = list.reduce((n, p) => n + charCount(p), 0);
   const wordCounts = list.map((p) => (p.match(/[\p{L}\p{N}']+/gu) || []).length);
   const medWords = median(wordCounts);
   const longest = Math.max(0, ...wordCounts);
+
+  // Tokenise once. Building a Set dominates the cost of a comparison, and the
+  // previous implementation rebuilt both sides on every pair.
+  const entries = list.map((text) => ({ text, set: wordSet(text) }));
 
   const apology = hits(list, P.apology);
   const politeness = hits(list, P.politeness);
@@ -202,8 +236,8 @@ export function analyze(prompts) {
   const churnPhrase = hits(list, P.churn);
 
   let simReasks = 0;
-  for (let i = 1; i < list.length; i += 1) {
-    if (similarity(list[i - 1], list[i]) >= 0.55) simReasks += 1;
+  for (let i = 1; i < entries.length; i += 1) {
+    if (similarityOfSets(entries[i - 1].set, entries[i].set) >= REASK_THRESHOLD) simReasks += 1;
   }
   const reasks = churnPhrase.count + simReasks;
 
@@ -364,11 +398,13 @@ export function analyze(prompts) {
 
   const relationship = relationshipLine(metrics, axes, m);
   const wild = wildestLine(list);
-  const topRepeat = findTopRepeat(list);
+  const topRepeat = findTopRepeat(entries);
 
   return {
     ok: m > 0,
     messageCount: m,
+    truncated,
+    droppedCount: truncated ? all.length - m : 0,
     chars: totalChars,
     tokens: tokens(joined),
     medianWords: Math.round(medWords),
@@ -382,14 +418,14 @@ export function analyze(prompts) {
       runnerUp: runnerUp.archetype,
       margin: Math.round(top.score - runnerUp.score),
       secondaryTrait: secondary ? secondary.label : null,
-      smallSample: m < 5,
+      smallSample: m < MIN_CONFIDENT,
     },
     relationship,
     wildest: wild,
     topRepeat,
     sampleNote:
-      m < 5
-        ? `Only ${m} message${m === 1 ? "" : "s"} analysed. Paste more for a verdict you can defend in public.`
+      m < MIN_CONFIDENT
+        ? `Only ${plural(m, "message")} analysed. The verdict is provisional until you paste about ${MIN_CONFIDENT}.`
         : null,
   };
 }

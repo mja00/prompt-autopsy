@@ -59,7 +59,7 @@ js/
   card.js             canvas renderer for the shareable card
   samples.js          three demo conversations
   app.js              DOM wiring, share, drag-and-drop, gallery
-test/engine.test.mjs  16 tests covering parsing, scoring separation, and edge cases
+test/engine.test.mjs  engine tests: parsing, scoring separation, caps, thresholds
 tools/build.mjs       builds dist/, rewrites absolute URLs, guards against dev files shipping
 ```
 
@@ -81,7 +81,7 @@ Bars are a threshold rubric with saturation points, not a fake percentile, and t
 ## Develop
 
 ```bash
-npm test        # 18 engine tests
+npm test        # 23 engine tests
 npm run serve   # build dist/ and serve on :8099
 npm run og      # re-render og.png from og.html (needs headless Chrome)
 npm run deploy  # build and deploy to Cloudflare Pages
@@ -143,8 +143,17 @@ and the method section says so on the page.
 **Share text includes the link.** The "Copy the post text" output ends with the URL, because a
 screenshot in a reply is worth less than a link someone can click.
 
-**Small samples are flagged.** Under five messages the verdict is stamped `tentative` and the
-UI says so. Confident nonsense from three prompts is how this genre of site loses credibility.
+**Small samples are flagged.** Below `MIN_CONFIDENT` (20 messages) the verdict is stamped
+`tentative` and the UI says so. The method copy imports the same constant, so the number quoted
+and the number enforced cannot drift. Confident nonsense from three prompts is how this genre of
+site loses credibility.
+
+**Large inputs are capped, not trusted.** A ChatGPT export can carry thousands of turns, so
+`MAX_ANALYZED` (1500) bounds the work and the UI says how many were skipped. The retry-spiral scan
+is also bounded-window rather than all-pairs: the original compared every message against every
+other one while re-tokenising both sides each time, which on a 5k-message export was ~12.5M
+Set-allocating comparisons — minutes of frozen tab on the feature the page calls instant. A
+6000-message input now analyses in ~40ms. Token sets are built once per message.
 
 **The `the-normal-one` archetype is gated.** An archetype defined by the *absence* of signal
 would otherwise win every unremarkable profile by default, so it is only eligible when no axis
