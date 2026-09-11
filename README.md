@@ -73,26 +73,58 @@ Bars are a threshold rubric with saturation points, not a fake percentile, and t
 ## Develop
 
 ```bash
-npm test        # 16 engine tests
+npm test        # 18 engine tests
 npm run serve   # build dist/ and serve on :8099
 npm run og      # re-render og.png from og.html (needs headless Chrome)
-npm run deploy  # build for mart.fyi and deploy to Cloudflare Pages
+npm run deploy  # build and deploy to Cloudflare Pages
 ```
+
+Deployment targets `https://prompt-autopsy.pages.dev`. To move to a custom domain, pass it
+explicitly (the base URL is a required argument — see below) and create the DNS record first:
+
+```bash
+node tools/build.mjs https://prompt-autopsy.mart.fyi
+npx wrangler pages deploy dist --project-name=prompt-autopsy --branch=main
+```
+
+**Custom domain status:** `prompt-autopsy.mart.fyi` is attached to the Pages project but does
+**not** resolve. Cloudflare does not auto-create DNS for an API-attached Pages domain, and the
+wrangler OAuth token in use has no `dns_records:edit` scope, so the record has to be created by
+hand. Add it in the mart.fyi zone:
+
+| Type  | Name            | Content                     | Proxy  |
+|-------|-----------------|-----------------------------|--------|
+| CNAME | `prompt-autopsy`| `prompt-autopsy.pages.dev`  | on     |
+
+Then confirm before repointing anything:
+
+```bash
+curl -sI https://prompt-autopsy.mart.fyi/og.png   # expect 200 + image/png
+```
+
+Until that returns 200, keep the `pages.dev` base. A canonical/og URL pointing at a host that
+does not resolve makes X render every shared link as a bare text card, which is the whole
+distribution mechanism.
 
 ## Deploy
 
 ```bash
-node tools/build.mjs https://your-domain.example
+node tools/build.mjs https://your-domain.example   # base URL is required
 npx wrangler pages deploy dist --project-name=prompt-autopsy --branch=main
 ```
 
-`tools/build.mjs` takes the base URL as its argument because a wrong absolute `og:image` host
-silently downgrades every shared link to a bare text card — and the link preview is the entire
-distribution mechanism. The build fails if any crawler-facing file points somewhere other than
-the host being deployed to.
+`tools/build.mjs` requires the base URL rather than defaulting it, because a wrong absolute
+`og:image` host silently downgrades every shared link to a bare text card — and the link preview
+is the entire distribution mechanism. A default would let `node tools/build.mjs` run with no
+argument and quietly repoint the shipped tags at some other host. The build also fails if any
+crawler-facing file points somewhere other than the host being deployed to.
 
-> Wrangler 4.x delegates `pages` commands to Workers. The project was created with
-> `--force` to stay on classic Pages. Do not pass `--force` again.
+> Wrangler 4.x delegates `pages` commands to Workers. The project was created with `--force` to
+> stay on classic Pages, deliberately: Workers Free is capped at ~100k requests/day, and this
+> page costs ~9 requests per view (document + 6 ES modules + CSS + icon), so that cap would bite
+> at roughly 11k pageviews — exactly the viral spike this design exists to survive. Pages static
+> assets have no such per-day request limit. **Do not pass `--force` again**, and do not migrate
+> to Workers.
 
 ## Design decisions
 
@@ -113,10 +145,13 @@ is high and there are at least six messages.
 
 ## Verification
 
-- `npm test` — 16/16 passing, including a profile-separation test asserting that eight
-  distinguishable writing styles produce eight distinguishable verdicts.
-- Production smoke test in a real Chromium: zero console errors, zero failed requests under CSP,
-  `0 external requests` reported by the runtime badge, all three samples returning their
-  intended verdict.
+- `npm test` — 18/18 passing. Includes a profile-separation test asserting eight distinguishable
+  writing styles produce eight distinguishable verdicts (this is the test that catches scoring
+  regressions), and a test pinning each demo button's label to the verdict it actually produces.
+- Production smoke test in a real Chromium against the deployed site: zero console errors, zero
+  failed requests under CSP, `0 external requests` reported by the runtime badge, all three
+  samples returning their intended verdict, card rendering at 2400×1350.
 - `og.png` verified live: HTTP 200, `image/png`, exactly 1200×630, matching its declared
   `og:image:width` / `og:image:height`.
+- Edge cases exercised in the browser: empty input, unlabelled paste, and the
+  "everything I paste is mine" override.

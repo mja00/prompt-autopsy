@@ -6,9 +6,9 @@
   "type": "module",
   "scripts": {
     "test": "node --test 'test/*.test.mjs'",
-    "build": "node tools/build.mjs",
-    "serve": "node tools/build.mjs && python3 -m http.server 8099 --directory dist",
+    "build": "node tools/build.mjs https://prompt-autopsy.pages.dev",
+    "serve": "npm run build && python3 -m http.server 8099 --directory dist",
     "og": "google-chrome-stable --headless --disable-gpu --no-sandbox --hide-scrollbars --window-size=1200,630 --screenshot=og.png \"file://$PWD/og.html\"",
-    "deploy": "node tools/build.mjs https://prompt-autopsy.mart.fyi && npx wrangler pages deploy dist --project-name=prompt-autopsy --branch=main --commit-dirty=true"
+    "deploy": "node tools/build.mjs https://prompt-autopsy.pages.dev && npx wrangler pages deploy dist --project-name=prompt-autopsy --branch=main --commit-dirty=true"
   }
 }

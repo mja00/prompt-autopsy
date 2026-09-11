@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parse, toPrompts, detectFormat } from "../js/parse.js";
 import { analyze } from "../js/analyze.js";
+import { SAMPLES } from "../js/samples.js";
 
 const CHATGPT_PASTE = `You said:
 Can you help me fix this CSS bug? Sorry if this is obvious.
@@ -240,6 +241,29 @@ test("reflective self-description is not misread as micro-management", () => {
   ];
   const a = analyze(reflective);
   assert.equal(a.metrics.find((m) => m.id === "control").value, 0);
+});
+
+test("counts read correctly at n=1 in share text", () => {
+  const a = analyze(["sorry, please help me, you are amazing and that is perfect"]);
+  const stat = (id) => a.metrics.find((m) => m.id === id).stat;
+  assert.equal(stat("flattery"), "1 compliment");
+  assert.equal(stat("apology"), "1 of 1 message");
+  assert.equal(stat("control"), "0 constraints");
+  assert.equal(stat("urgency"), "0 urgency markers");
+});
+
+test("every demo sample produces the verdict its label advertises", () => {
+  // The demo buttons are the first thing a visitor clicks, so a label that
+  // contradicts the result is the most visible possible bug.
+  for (const [key, sample] of Object.entries(SAMPLES)) {
+    const parsed = parse(sample.text);
+    const result = analyze(toPrompts(parsed));
+    assert.equal(
+      result.verdict.archetype.id,
+      sample.expects,
+      `${key}: button says "${sample.label}" but the verdict is ${result.verdict.archetype.name}`,
+    );
+  }
 });
 
 test("every metric stays inside 0-100 and carries evidence", () => {

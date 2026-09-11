@@ -17,7 +17,17 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 
-const BASE = (process.argv[2] || "https://prompt-autopsy.pages.dev").replace(/\/+$/, "");
+// Required, not defaulted. A bare `node tools/build.mjs` used to fall back to a
+// hardcoded host and silently repoint canonical/og:image away from the domain
+// actually being deployed to — which is exactly the failure this build step
+// exists to prevent. The guard cannot catch that, because it compares the
+// output against BASE itself.
+if (!process.argv[2]) {
+  console.error("usage: node tools/build.mjs <base-url>   e.g. https://prompt-autopsy.pages.dev");
+  console.error("       (run `npm run deploy` to build and deploy in one step)");
+  process.exit(1);
+}
+const BASE = process.argv[2].replace(/\/+$/, "");
 
 const FILES = [
   "index.html",

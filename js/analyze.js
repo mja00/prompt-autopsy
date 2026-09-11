@@ -122,6 +122,12 @@ function fmtPct(n) {
   return `${Math.round(n)}%`;
 }
 
+// These stats get posted verbatim to Twitter, so "1 compliments" is not
+// acceptable anywhere a count reaches the user.
+function plural(n, singular, pluralForm) {
+  return `${n} ${n === 1 ? singular : pluralForm ?? `${singular}s`}`;
+}
+
 function pctOf(part, whole) {
   return whole ? (part / whole) * 100 : 0;
 }
@@ -211,7 +217,7 @@ export function analyze(prompts) {
       id: "apology",
       label: "Apology Index",
       value: axes.apology,
-      stat: `${apology.count} of ${m} messages`,
+      stat: `${apology.count} of ${plural(m, "message")}`,
       evidence:
         apology.count === 0
           ? "You have never apologised to a language model. Correct, arguably."
@@ -239,7 +245,7 @@ export function analyze(prompts) {
       id: "hostility",
       label: "Machine Abuse",
       value: axes.hostility,
-      stat: `${hostility.count} accusations`,
+      stat: plural(hostility.count, "accusation"),
       evidence:
         hostility.count === 0
           ? "You never once accused it of being wrong. Either it behaved, or you did not check."
@@ -253,7 +259,7 @@ export function analyze(prompts) {
       id: "churn",
       label: "Retry Spiral",
       value: axes.churn,
-      stat: `${reasks} re-asks`,
+      stat: plural(reasks, "re-ask"),
       evidence:
         reasks === 0
           ? "You asked once and accepted the answer. Rare and slightly unnerving."
@@ -267,7 +273,7 @@ export function analyze(prompts) {
       id: "control",
       label: "Micro-Management",
       value: axes.control,
-      stat: `${controlTotal} constraints`,
+      stat: plural(controlTotal, "constraint"),
       evidence: `${controlTotal} don'ts, onlys, exactlys and musts across ${m} messages — ${(controlTotal / Math.max(m, 1)).toFixed(1)} per message${controlWeak ? `, plus ${controlWeak} softer \u201cjust/make it\u201d style nudges` : ""}.`,
       joke:
         axes.control > 60
@@ -291,7 +297,7 @@ export function analyze(prompts) {
       id: "flattery",
       label: "Bot Flattery",
       value: axes.flattery,
-      stat: `${flattery.count} compliments`,
+      stat: plural(flattery.count, "compliment"),
       evidence:
         flattery.count === 0
           ? "You have never once told it that it did a good job. It has also never done a good job, so."
@@ -316,7 +322,7 @@ export function analyze(prompts) {
       id: "urgency",
       label: "Deadline Panic",
       value: axes.urgency,
-      stat: `${urgency.count} urgency markers`,
+      stat: plural(urgency.count, "urgency marker"),
       evidence: `${urgency.count} asaps, right-nows and hurry-ups${nightHits ? `, plus ${nightHits} reference${nightHits === 1 ? "" : "s"} to what time it is` : ""}.`,
       joke:
         axes.urgency > 55

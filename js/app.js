@@ -89,6 +89,11 @@ function run() {
   renderDetection(parsed, prompts);
 
   if (!prompts.length) {
+    // Without this, a previous report stays on screen underneath a
+    // "0 messages of yours" header, which reads as a result rather than a
+    // failure to parse.
+    for (const section of [el.report, el.findings, el.exhibits, el.share]) section.hidden = true;
+    current = null;
     el.detect.hidden = false;
     el.detect.scrollIntoView({ block: "center" });
     return;

@@ -3,7 +3,8 @@
 
 export const SAMPLES = {
   apologetic: {
-    label: "the apologiser",
+    label: "the doormat",
+    expects: "doormat",
     text: `You said:
 Hi! Sorry to bother you, I know you're busy. I have a quick question about a React component I'm working on. It's a fairly small thing but I've been stuck on it for a while and I didn't want to take up your time with something obvious. Sorry in advance if this is a dumb question.
 
@@ -61,6 +62,7 @@ Keyboard events follow focus rather than pointer position, so the same containme
 
   feral: {
     label: "the feral debugger",
+    expects: "feral-debugger",
     text: `You said:
 why is my docker build failing
 
@@ -136,6 +138,7 @@ Ah — the .dockerignore fix took effect once the cache was cleared. Glad it is 
 
   rambler: {
     label: "the 3am rambler",
+    expects: "midnight-rambler",
     text: `You said:
 ok so i'm rebuilding my personal site for the fourth time this year and i want to talk through the whole thing with you because i don't trust my own judgement on it anymore. context: it's a portfolio but i use it more as a blog honestly, and the blog is mostly notes to myself, but also i want it to look good when i send it to people for work, which is a contradiction i haven't resolved. it's currently astro, before that it was next, before that it was a hand rolled static generator i wrote at 2am and then abandoned. i'm 90% happy with astro. the parts i'm not happy with are: the images, the search, and the fact that every time i touch the css something else breaks. anyway i guess my question is whether i should just keep going with astro or whether i'm avoiding something
 
